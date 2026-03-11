@@ -99,13 +99,21 @@ function fetchExternalData() {
   const config = configDb.prepare('SELECT value FROM server_config WHERE key = "external_api_fetch_interval_ms"').get() as any;
   const interval = config ? parseInt(config.value, 10) : 60000;
 
-  // Simulate fetching external data and passing it to the service
-  // In a real app, this would be a fetch() call to a real API
-  const mockExternalData = [
-    // { code: 'SE1', estimated_segment: 12.5, estimated_velocity: 0.55, status: 'running' }
-  ];
-  if (mockExternalData.length > 0) {
-    estimatorService.processExternalData(mockExternalData);
+  console.log('Fetching external data...');
+  
+  // 1. Try to fetch from external API (simulated)
+  let apiSuccess = false;
+  try {
+    // In a real app, this would be a fetch() call
+    // const response = await fetch('https://api.railway.vn/trains');
+    // if (response.ok) { ... apiSuccess = true; }
+  } catch (e) {
+    console.error('External API fetch failed, falling back to file.');
+  }
+
+  // 2. Fallback to sample text file if API fails or for preview
+  if (!apiSuccess) {
+    estimatorService.processFileData('train_data.txt');
   }
 
   setTimeout(fetchExternalData, interval);
