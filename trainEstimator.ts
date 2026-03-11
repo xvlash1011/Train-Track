@@ -68,7 +68,7 @@ export class TrainEstimatorService {
   // This function runs the internal estimation loop when no external data is received
   public tickInternalEstimation() {
     const now = Date.now();
-    const trains = this.trainsDb.prepare('SELECT * FROM trains WHERE status = "running"').all() as any[];
+    const trains = this.trainsDb.prepare("SELECT * FROM trains WHERE status = 'running'").all() as any[];
     const updateTrain = this.trainsDb.prepare('UPDATE trains SET current_segment = ?, status = ?, last_updated = ? WHERE id = ?');
     
     for (const train of trains) {

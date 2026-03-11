@@ -3,6 +3,14 @@ import { createServer as createViteServer } from 'vite';
 import Database from 'better-sqlite3';
 import cors from 'cors';
 
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 import { TrainEstimatorService } from './trainEstimator';
 
 const app = express();
@@ -12,8 +20,17 @@ app.use(cors());
 app.use(express.json());
 
 // Set up databases
-const trainsDb = new Database('trains.db');
-const configDb = new Database('config.db');
+let trainsDb: Database.Database;
+let configDb: Database.Database;
+
+try {
+  trainsDb = new Database('trains.db');
+  configDb = new Database('config.db');
+  console.log('Databases initialized successfully.');
+} catch (error) {
+  console.error('Failed to initialize databases:', error);
+  process.exit(1);
+}
 
 // Initialize tables
 trainsDb.exec(`
@@ -57,12 +74,14 @@ configDb.exec(`
 // Seed data if empty
 const stationCount = trainsDb.prepare('SELECT COUNT(*) as count FROM stations').get() as { count: number };
 if (stationCount.count === 0) {
+  console.log('Seeding initial data...');
   const insertStation = trainsDb.prepare('INSERT INTO stations (name, lat, lng) VALUES (?, ?, ?)');
   const hanoiId = insertStation.run('Hà Nội', 21.0245, 105.84117).lastInsertRowid;
   const vinhId = insertStation.run('Vinh', 18.6733, 105.6744).lastInsertRowid;
   const hueId = insertStation.run('Huế', 16.4586, 107.5758).lastInsertRowid;
   const danangId = insertStation.run('Đà Nẵng', 16.0683, 108.2136).lastInsertRowid;
   const saigonId = insertStation.run('Sài Gòn', 10.7803, 106.6778).lastInsertRowid;
+  console.log('Stations seeded.');
 
   const insertRoute = trainsDb.prepare('INSERT INTO routes (from_station_id, to_station_id, total_segments, path_json) VALUES (?, ?, ?, ?)');
   
@@ -78,12 +97,16 @@ if (stationCount.count === 0) {
 
   const danang_saigon = [[16.0683, 108.2136], [10.7803, 106.6778]];
   const danang_saigon_id = insertRoute.run(danangId, saigonId, 300, JSON.stringify(danang_saigon)).lastInsertRowid;
+  console.log('Routes seeded.');
 
   const insertTrain = trainsDb.prepare('INSERT INTO trains (code, current_route_id, current_segment, velocity, status, last_updated) VALUES (?, ?, ?, ?, ?, ?)');
   const now = Date.now();
   insertTrain.run('SE1', hn_vinh_id, 10.5, 0.5, 'running', now); // 0.5 segments per second
   insertTrain.run('SE3', vinh_hue_id, 50.0, 0.6, 'running', now);
   insertTrain.run('SE5', danang_saigon_id, 150.2, 0.4, 'running', now);
+  console.log('Trains seeded.');
+} else {
+  console.log(`Database already contains ${stationCount.count} stations.`);
 }
 
 // Service to estimate train positions
@@ -142,19 +165,33 @@ app.get('/api/config', (req, res) => {
 });
 
 async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    app.use(express.static('dist'));
-  }
+  console.log('Starting server...');
+  console.log('NODE_ENV:', process.env.NODE_ENV);
+  try {
+    // In AI Studio, we usually want Vite middleware during development
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    if (!isProduction) {
+      console.log('Initializing Vite middleware...');
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: 'spa',
+      });
+      app.use(vite.middlewares);
+      console.log('Vite middleware initialized.');
+    } else {
+      console.log('Serving static files from dist...');
+      app.use(express.static('dist'));
+    }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on http://0.0.0.0:${PORT}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+  }
 }
 
-startServer();
+startServer().catch(err => {
+  console.error('Unhandled error in startServer:', err);
+});

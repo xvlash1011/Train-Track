@@ -63,6 +63,7 @@ function getPositionAlongPath(path: [number, number][], fraction: number): [numb
 }
 
 export default function Map() {
+  console.log('Map component rendering...');
   const [stations, setStations] = useState<Station[]>([]);
   const [routes, setRoutes] = useState<Route[]>([]);
   const [trains, setTrains] = useState<Train[]>([]);
@@ -72,12 +73,22 @@ export default function Map() {
   const trainsRef = useRef<Train[]>([]);
 
   useEffect(() => {
+    console.log('Map component mounted, fetching data...');
     const fetchData = async () => {
       try {
         const [stationsRes, routesRes, trainsRes] = await Promise.all([
-          fetch('/api/stations').then(r => r.json()),
-          fetch('/api/routes').then(r => r.json()),
-          fetch('/api/trains').then(r => r.json()),
+          fetch('/api/stations').then(r => {
+            console.log('Fetched stations');
+            return r.json();
+          }),
+          fetch('/api/routes').then(r => {
+            console.log('Fetched routes');
+            return r.json();
+          }),
+          fetch('/api/trains').then(r => {
+            console.log('Fetched trains');
+            return r.json();
+          }),
         ]);
         setStations(stationsRes);
         setRoutes(routesRes);
