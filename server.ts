@@ -96,7 +96,7 @@ setInterval(() => {
 
 // Example of external API fetch simulation
 function fetchExternalData() {
-  const config = configDb.prepare('SELECT value FROM server_config WHERE key = "external_api_fetch_interval_ms"').get() as any;
+  const config = configDb.prepare("SELECT value FROM server_config WHERE key = 'external_api_fetch_interval_ms'").get() as any;
   const interval = config ? parseInt(config.value, 10) : 60000;
 
   console.log('Fetching external data...');
